@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MotoBase — Сравнение мотоциклов</title>
+<meta name="description" content="Сравни мотоциклы разных марок: характеристики, цены, рейтинги. Подбор по правам A1/A2/A. AI-советник.">
+<meta name="keywords" content="мотоциклы, сравнение, каталог, A1, A2, спорт, naked, эндуро">
+<meta property="og:title" content="MotoBase — Сравнение мотоциклов">
+<meta property="og:description" content="Каталог мотоциклов с фильтрами и AI-советником">
+<meta property="og:type" content="website">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% if config.GA_MEASUREMENT_ID %}
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ config.GA_MEASUREMENT_ID }}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '{{ config.GA_MEASUREMENT_ID }}');
+</script>
+{% endif %}
+{% if config.SHOW_ADS and config.ADSENSE_CLIENT %}
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ config.ADSENSE_CLIENT }}" crossorigin="anonymous"></script>
+{% endif %}
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-l">
+    <span class="brand">MOTOBASE</span>
+    <span class="hdr-divider">|</span>
+    <span class="hdr-meta">{{ grouped|length }} {{ t.models_label }} · {{ total_models }} {{ t.variants_label }}</span>
+  </div>
+  <div class="hdr-r">
+    <div class="lang-picker">
+      {% for l in langs %}
+        <a class="lang-btn{% if lang == l %} active{% endif %}" href="?lang={{ l }}">{{ l|upper }}</a>
+      {% endfor %}
+    </div>
+    <button class="btn" onclick="openAI()">{{ t.ai_advisor }}</button>
+    <button class="btn btn-icon" onclick="toggleTheme()" id="theme-btn" title="{{ t.theme_toggle }}">
+      <span id="theme-icon"></span>
+    </button>
+  </div>
+</header>
+
+<section class="filters">
+  <div class="search-wrap">
+    <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input type="text" id="f-search" placeholder="{{ t.search_placeholder }}">
+    <button class="search-clear" id="f-search-clear" onclick="clearSearch()" style="display:none">✕</button>
+  </div>
+  <div class="lic-pills" id="lic-pills">
+    <span class="lic-label">{{ t.filter_license }}:</span>
+    <button class="lpill active" data-license="">{{ t.filter_license_any }}</button>
+    <button class="lpill" data-license="A1">A1</button>
+    <button class="lpill" data-license="A2">A2</button>
+    <button class="lpill" data-license="A">A</button>
+  </div>
+  <div class="lic-pills" id="cc-pills">
+    <span class="lic-label">{{ t.filter_cc }}:</span>
+    <button class="lpill active" data-cc="">{{ t.filter_all }}</button>
+    <button class="lpill" data-cc="0-125">{{ t.cc_to_125 }}</button>
+    <button class="lpill" data-cc="126-500">{{ t.cc_126_500 }}</button>
+    <button class="lpill" data-cc="501-1000">{{ t.cc_501_1000 }}</button>
+    <button class="lpill" data-cc="1001-9999">{{ t.cc_1000_plus }}</button>
+  </div>
+  <div class="pills" id="cat-pills">
+    <button class="pill active" data-type="">{{ t.filter_all }}</button>
+    {% for tk in types %}
+      <button class="pill" data-type="{{ tk }}">{{ type_names[tk] }}</button>
+    {% endfor %}
+  </div>
+  <div class="controls">
+    <div class="ctrl">
+      <label class="ctrl-label">{{ t.filter_brand }}</label>
+      <select id="f-brand">
+        <option value="">{{ t.filter_all }}</option>
+        {% for b in brands %}<option value="{{ b }}">{{ b }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="ctrl">
+      <label class="ctrl-label">{{ t.filter_country }}</label>
+      <select id="f-country">
+        <option value="">{{ t.filter_all }}</option>
+        {% for c in countries %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="ctrl">
+      <label class="ctrl-label">{{ t.filter_year }}</label>
+      <select id="f-year">
+        <option value="">{{ t.filter_all }}</option>
+        {% for y in years %}<option value="{{ y }}">{{ y }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="ctrl">
+      <label class="ctrl-label">{{ t.filter_trans }}</label>
+      <select id="f-trans">
+        <option value="">{{ t.filter_all }}</option>
+        {% for tr in transmissions %}<option value="{{ tr }}">{{ tr }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="ctrl">
+      <label class="ctrl-label">{{ t.filter_hp_from }}</label>
+      <input type="number" id="f-hp" placeholder="0" min="0">
+    </div>
+    <div class="ctrl">
+      <label class="ctrl-label">{{ t.filter_price_to }}</label>
+      <input type="number" id="f-price" placeholder="∞" min="0">
+    </div>
+  </div>
+</section>
+
+<div class="compare-bar" id="compare-bar">
+  <div class="cb-info" id="cb-info">{{ t.selected_label }}: <strong>0</strong> — {{ t.compare_hint }}</div>
+  <div class="cb-actions">
+    <button class="btn" onclick="clearAll()">{{ t.reset }}</button>
+    <button class="btn btn-primary" id="cb-go" onclick="goCompare()" disabled>{{ t.compare_btn }}</button>
+  </div>
+</div>
+
+<div class="catalog-toolbar">
+  <div class="sort-wrap">
+    <label class="sort-label">{{ t.sort_label }}:</label>
+    <div class="sort-dropdown">
+      <button class="sort-btn" id="sort-btn" onclick="toggleSortMenu()">
+        <span id="sort-current">{{ t.sort_default }}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div class="sort-menu" id="sort-menu">
+        <button class="sort-option active" data-sort="default">{{ t.sort_default }}</button>
+        <button class="sort-option" data-sort="price-asc">{{ t.sort_price_asc }}</button>
+        <button class="sort-option" data-sort="price-desc">{{ t.sort_price_desc }}</button>
+        <button class="sort-option" data-sort="hp-asc">{{ t.sort_hp_asc }}</button>
+        <button class="sort-option" data-sort="hp-desc">{{ t.sort_hp_desc }}</button>
+        <button class="sort-option" data-sort="weight-asc">{{ t.sort_weight_asc }}</button>
+        <button class="sort-option" data-sort="weight-desc">{{ t.sort_weight_desc }}</button>
+        <button class="sort-option" data-sort="year-desc">{{ t.sort_year_desc }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-wrap">
+  <div class="grid" id="grid">
+    {% for g in grouped %}
+    {% set yc = g.years|length %}
+    {% set tc = g.trims|length %}
+    <article class="card"
+      data-key="{{ g.key }}"
+      data-type="{{ g.type }}"
+      data-type-name="{{ type_names[g.type] }}"
+      data-brand="{{ g.brand }}"
+      data-name="{{ g.name }}"
+      data-country="{{ g.country }}"
+      data-years="{{ g.years|join(',') }}"
+      data-transmissions="{{ g.transmissions|join(',') }}"
+      data-min-hp="{{ g.min_hp }}"
+      data-max-hp="{{ g.max_hp }}"
+      data-min-price="{{ g.min_price }}"
+      data-max-price="{{ g.max_price }}"
+      data-license="{{ g.license }}"
+      data-license-allowed="{{ g.license_allowed|join(',') }}"
+      data-min-cc="{{ g.min_cc }}"
+      data-max-cc="{{ g.max_cc }}"
+      data-min-weight="{{ g.min_weight }}"
+      data-max-weight="{{ g.max_weight }}"
+      data-max-year="{{ g.years[-1] }}"
+      data-variants='{{ g.variants|tojson }}'>
+      <div class="card-img-wrap">
+        {% if g.preview_image %}
+          <img src="{{ g.preview_image }}" alt="{{ g.brand }} {{ g.name }}"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        {% endif %}
+        <div class="card-ph type-bg-{{ g.type }}" {% if not g.preview_image %}style="display:flex"{% endif %}>
+          {{ type_names[g.type] }}
+        </div>
+        <div class="card-badges card-badges-left">
+          <span class="card-badge">{{ type_names[g.type] }}</span>
+        </div>
+        <div class="card-badges card-badges-right">
+          <span class="badge-license badge-lic-{{ g.license|lower }}">{{ g.license }}</span>
+        </div>
+        {% if g.variants|length > 1 %}
+        <div class="card-badges card-badges-bottom-right">
+          <span class="card-variants-badge">{{ g.variants|length }} {{ g.variants|length|plural_t(t.p_variants) }}</span>
+        </div>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <div class="card-brand">{{ g.brand }}</div>
+        <div class="card-name">{{ g.name }}</div>
+        <div class="card-year">
+          {% if yc == 1 %}{{ g.years[0] }}{% else %}{{ yc }} {{ yc|plural_t(t.p_year) }}{% endif %}
+          {% if tc > 1 %} · {{ tc }} {{ tc|plural_t(t.p_trim) }}{% endif %}
+        </div>
+
+        <div class="card-mini">
+          <div class="mini-cell">
+            <div class="mini-val">{% if g.min_hp == g.max_hp %}{{ g.min_hp }}{% else %}{{ g.min_hp }}–{{ g.max_hp }}{% endif %}</div>
+            <div class="mini-lbl">{{ t.u_hp }}</div>
+          </div>
+          <div class="mini-cell">
+            <div class="mini-val">{% if g.min_cc == g.max_cc %}{{ g.min_cc }}{% else %}{{ g.min_cc }}–{{ g.max_cc }}{% endif %}</div>
+            <div class="mini-lbl">{{ t.u_cc }}</div>
+          </div>
+          <div class="mini-cell">
+            <div class="mini-val">{% if g.min_weight == g.max_weight %}{{ g.min_weight }}{% else %}{{ g.min_weight }}–{{ g.max_weight }}{% endif %}</div>
+            <div class="mini-lbl">{{ t.u_kg }}</div>
+          </div>
+        </div>
+
+        <div class="card-meta">
+          <span>{{ g.country }}</span>
+          <span class="price">{% if g.min_price == g.max_price %}${{ "{:,}".format(g.min_price) }}{% else %}{{ t.price_from }}{{ "{:,}".format(g.min_price) }}{% endif %}</span>
+        </div>
+
+        {% if g.variants[0].url %}
+        <a class="card-link" href="{{ g.variants[0].url }}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+          {{ t.manufacturer_link }}
+        </a>
+        {% endif %}
+
+        <button class="card-btn">{{ t.add_to_compare }}</button>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  <div class="empty" id="empty" style="display:none">{{ t.empty_results }}</div>
+</div>
+
+<div class="overlay" id="variant-overlay" onclick="closeVariantPicker()"></div>
+<div class="variant-modal" id="variant-modal" role="dialog" aria-modal="true" aria-labelledby="vm-title">
+  <div class="vm-hdr">
+    <h2 class="vm-title" id="vm-title">—</h2>
+    <button class="btn-close" onclick="closeVariantPicker()" aria-label="{{ t.close }}">✕</button>
+  </div>
+  <div class="vm-body">
+    <p class="vm-hint" id="vm-hint">{{ t.vm_pick_multi }}</p>
+    <div class="vm-list" id="vm-list"></div>
+  </div>
+  <div class="vm-footer">
+    <button class="btn-primary" onclick="closeVariantPicker()">
+      {{ t.vm_done }}
+    </button>
+  </div>
+</div>
+
+<aside class="ai-panel" id="ai-panel">
+  <div class="panel-hdr">
+    <span class="panel-title">{{ t.ai_advisor }}</span>
+    <button class="btn-close" onclick="closeAI()" aria-label="{{ t.close }}">✕</button>
+  </div>
+  <div class="ai-msgs" id="ai-msgs">
+    <div class="ai-msg system">{{ t.ai_greeting }}</div>
+  </div>
+  <div class="ai-key-block" id="ai-key-block">
+    <div class="ai-key-row">
+      <input type="password" id="ai-key" placeholder="sk-ant-..." autocomplete="off">
+      <button class="btn btn-primary" onclick="saveKey()">{{ t.ai_save }}</button>
+      <button class="btn" onclick="clearKey()" title="{{ t.reset }}">×</button>
+    </div>
+    <div class="ai-hint">{{ t.ai_key_hint }} <a href="https://console.anthropic.com/" target="_blank" rel="noopener">console.anthropic.com</a></div>
+    <div id="key-status"></div>
+  </div>
+  <div class="ai-input-bar">
+    <input type="text" id="ai-input" placeholder="{{ t.ai_placeholder }}"
+           onkeydown="if(event.key==='Enter')sendAI()">
+    <button class="btn-primary" onclick="sendAI()">→</button>
+  </div>
+</aside>
+
+<script>
+const I18N = {{ t|tojson }};
+const LANG = {{ lang|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/catalog.js') }}"></script>
+</body>
+</html>

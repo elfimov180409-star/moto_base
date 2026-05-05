@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% set cmp_title = motos|map(attribute='name')|join(' vs ') %}
+<title>{{ cmp_title }} — MotoBase</title>
+<meta name="description" content="Сравнение характеристик: {{ cmp_title }}. Цены, мощность, вес, AI-анализ.">
+<meta property="og:title" content="{{ cmp_title }} — MotoBase">
+<meta property="og:description" content="Полное сравнение характеристик и цен">
+<meta property="og:type" content="article">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/compare.css') }}">
+{% if config.GA_MEASUREMENT_ID %}
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ config.GA_MEASUREMENT_ID }}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '{{ config.GA_MEASUREMENT_ID }}');
+</script>
+{% endif %}
+{% if config.SHOW_ADS and config.ADSENSE_CLIENT %}
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ config.ADSENSE_CLIENT }}" crossorigin="anonymous"></script>
+{% endif %}
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-l">
+    <a href="/?lang={{ lang }}" class="brand">MOTOBASE</a>
+    <span class="hdr-divider">|</span>
+    <span class="hdr-meta">{{ t.site_subtitle_cmp }}</span>
+  </div>
+  <div class="hdr-r">
+    <div class="lang-picker">
+      {% for l in langs %}
+        <a class="lang-btn{% if lang == l %} active{% endif %}" href="?lang={{ l }}">{{ l|upper }}</a>
+      {% endfor %}
+    </div>
+    <button class="btn btn-icon" onclick="toggleTheme()" title="{{ t.theme_toggle }}">
+      <span id="theme-icon"></span>
+    </button>
+  </div>
+</header>
+
+{% set n = motos|length %}
+
+<div class="cmp-wrap">
+  <a href="/?lang={{ lang }}" class="cmp-back">{{ t.back_to_catalog }}</a>
+
+  <div class="cmp-title">
+    {% for m in motos %}
+      <div class="cmp-title-name">{{ m.brand }} {{ m.name }}{% if m.trim %} {{ m.trim }}{% endif %}</div>
+      {% if not loop.last %}<span class="cmp-vs">VS</span>{% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="cmp-heroes cols-{{ n }}">
+    {% for m in motos %}
+    <div class="hero">
+      <div class="hero-img">
+        {% if m.image %}
+          <img src="{{ m.image }}" alt="{{ m.brand }} {{ m.name }}"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        {% endif %}
+        <div class="hero-ph type-bg-{{ m.type }}" {% if not m.image %}style="display:flex"{% endif %}>
+          {{ type_names[m.type] }}
+        </div>
+      </div>
+      <div class="hero-brand">{{ m.brand }}</div>
+      <div class="hero-name">
+        {{ m.name }}{% if m.trim %}<span class="trim">{{ m.trim }}</span>{% endif %}
+      </div>
+      <div class="hero-meta">{{ m.year }} · {{ type_names[m.type] }}</div>
+      <div class="hero-price">${{ "{:,}".format(m.price) }}</div>
+      <a href="{{ m.url }}" target="_blank" rel="noopener" class="hero-link">{{ t.manufacturer_link }}</a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <section class="section">
+    <h2 class="section-h">{{ t.cmp_prices }}</h2>
+    <div class="charts cols-{{ n }}">
+      {% for m in motos %}
+      <div class="chart-card">
+        <div class="chart-title">{{ m.brand }} {{ m.name }}{% if m.trim %} {{ m.trim }}{% endif %}</div>
+        <div class="pc-since">{{ t.available_since|replace('{y}', m.year|string) }}</div>
+        {% if price_data[loop.index0]|length == 1 %}
+          <div class="pc-no-data">{{ t.no_price_history }}</div>
+        {% else %}
+          <div class="chart-rows" id="chart{{ loop.index0 }}"></div>
+          <div class="chart-axis"></div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-h">{{ t.cmp_specs }}</h2>
+    <div class="spec-filter">
+      <button class="sf-btn active" data-mode="all">{{ t.cmp_filter_all }}</button>
+      <button class="sf-btn" data-mode="same">{{ t.cmp_filter_same }}</button>
+      <button class="sf-btn" data-mode="diff">{{ t.cmp_filter_diff }}</button>
+    </div>
+    <div class="spec-table">
+      {% for group in spec_groups %}
+      <div class="spec-group">
+        <div class="sg-row">{{ group.title }}</div>
+        {% for row in group.rows %}
+        <div class="sr cols-{{ n }} {% if not row.same %}sr-diff{% endif %}"
+             data-same="{% if row.same %}1{% else %}0{% endif %}">
+          <div class="sr-label">{{ row.label }}</div>
+          {% for v in row.vals %}
+            <div class="sr-val {% if not row.same and row.best == loop.index0 %}st-win{% endif %}">{{ v }}</div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-h">{{ t.cmp_ratings }}</h2>
+    {% set rating_labels = [('power', t.rating_power), ('comfort', t.rating_comfort), ('handling', t.rating_handling), ('value', t.rating_value)] %}
+    {% for key, label in rating_labels %}
+    <div class="rr-multi">
+      <div class="rr-multi-label">{{ label }}</div>
+      <div class="rr-multi-rows">
+        {% for m in motos %}
+        <div class="rr-multi-row">
+          <span class="rr-multi-name">{{ m.brand }} {{ m.name }}{% if m.trim %} {{ m.trim }}{% endif %}</span>
+          <div class="rr-track"><div class="rr-fill" style="width:{{ m.rating[key] * 10 }}%"></div></div>
+          <span class="rr-val">{{ m.rating[key] }}/10</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section class="section">
+    <h2 class="section-h">{{ t.cmp_ai }}</h2>
+    <div class="ai-analysis">
+      <div id="ai-result"></div>
+      <div class="ai-cta" id="ai-cta">
+        <div class="ai-cta-text">{{ t.cmp_ai_cta }}</div>
+        <button class="btn btn-primary" onclick="loadAnalysis()">{{ t.cmp_ai_btn }}</button>
+        <div class="cmp-key-block" id="cmp-key-block">
+          <div class="cmp-key-row">
+            <input type="password" id="cmp-key-input" placeholder="sk-ant-..." autocomplete="off">
+            <button class="btn btn-primary" onclick="saveCmpKey()">{{ t.ai_save }}</button>
+          </div>
+          <div class="cmp-key-status" id="cmp-key-status">{{ t.cmp_ai_intro }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% if config.AFFILIATE_ENABLED %}
+  <section class="cta-block">
+    <h3 class="cta-title">Готов к покупке?</h3>
+    <div class="cta-grid">
+      {% for m in motos %}
+      <a href="{{ affiliate_url('buy', m) }}" target="_blank" rel="nofollow sponsored" class="cta-card">
+        <div class="cta-label">Найти {{ m.brand }} {{ m.name }}</div>
+        <div class="cta-arrow">→</div>
+      </a>
+      {% endfor %}
+    </div>
+    <p class="cta-disclaimer">Партнёрская ссылка. Покупка через нас — благодарность сайту.</p>
+  </section>
+  {% endif %}
+
+  {% if config.SHOW_ADS and config.ADSENSE_CLIENT %}
+  <div class="ad-slot">
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="{{ config.ADSENSE_CLIENT }}"
+         data-ad-slot="0000000000"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </div>
+  {% endif %}
+
+  {% if alternatives %}
+  <section class="section">
+    <h2 class="section-h">{{ t.cmp_alts }}</h2>
+    <div class="alts">
+      {% for alt in alternatives %}
+      <a href="/compare/{{ motos[0].id }}/{{ alt.id }}?lang={{ lang }}" class="alt">
+        <div class="alt-vs">{{ motos[0].brand }} {{ motos[0].name }} VS</div>
+        <div class="alt-name">{{ alt.brand }} {{ alt.name }}{% if alt.trim %} {{ alt.trim }}{% endif %}</div>
+        <div class="alt-meta">{{ alt.year }} · {{ type_names[alt.type] }} · ${{ "{:,}".format(alt.price) }}</div>
+        <div class="alt-arrow">{{ t.compare_btn }}</div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+
+<script>
+const PRICE_DATA = {{ price_data|tojson }};
+const MOTOS = {{ motos|tojson }};
+const I18N = {{ t|tojson }};
+const LANG = {{ lang|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/compare.js') }}"></script>
+</body>
+</html>

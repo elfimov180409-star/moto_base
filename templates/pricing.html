@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ t.page_pricing }} — MotoBase</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-l">
+    <a href="/?lang={{ lang }}" class="brand">MOTOBASE</a>
+    <span class="hdr-divider">|</span>
+    <span class="hdr-meta">{{ t.page_pricing }}</span>
+  </div>
+  <div class="hdr-r">
+    <div class="lang-picker">
+      {% for l in langs %}
+        <a class="lang-btn{% if lang == l %} active{% endif %}" href="?lang={{ l }}">{{ l|upper }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</header>
+
+<div class="pricing-wrap">
+  <h1 class="pricing-title">{{ t.page_pricing }}</h1>
+  <div class="pricing-grid">
+    <div class="plan">
+      <div class="plan-name">{{ t.free_plan }}</div>
+      <div class="plan-price">$0</div>
+      <ul class="plan-feats">
+        <li>{{ config.AI_FREE_REQUESTS_PER_DAY }} AI-запросов / день</li>
+        <li>Все фильтры</li>
+        <li>Сравнение до 4 моделей</li>
+      </ul>
+      <a href="/?lang={{ lang }}" class="btn">{{ t.err_home }}</a>
+    </div>
+    <div class="plan plan-premium">
+      <div class="plan-name">{{ t.premium_plan }}</div>
+      <div class="plan-price">$4 / мес</div>
+      <ul class="plan-feats">
+        <li>{{ config.AI_PREMIUM_REQUESTS_PER_DAY }} AI-запросов / день</li>
+        <li>Без рекламы</li>
+        <li>Расширенный AI-анализ</li>
+      </ul>
+      <button class="btn btn-primary" disabled>{{ t.coming_soon }}</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.pricing-wrap { max-width: 900px; margin: 40px auto; padding: 20px; }
+.pricing-title { font-family: var(--fh); font-size: 32px; margin-bottom: 24px; text-align: center; }
+.pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.plan { border: 1px solid var(--line); border-radius: var(--rl); padding: 28px 24px; background: var(--bg); }
+.plan-premium { border-color: var(--txt); }
+.plan-name { font-family: var(--fh); font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.plan-price { font-family: var(--fh); font-size: 32px; font-weight: 800; margin-bottom: 16px; }
+.plan-feats { list-style: none; padding: 0; margin: 0 0 20px; font-size: 14px; line-height: 1.8; color: var(--txt2); }
+.plan-feats li::before { content: "✓ "; color: var(--green); }
+@media (max-width: 600px) { .pricing-grid { grid-template-columns: 1fr; } }
+</style>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ code }} — MotoBase</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="err-wrap">
+  <div class="err-code">{{ code }}</div>
+  <div class="err-msg">{{ message }}</div>
+  <a href="/?lang={{ lang }}" class="btn btn-primary">{{ t.err_home }}</a>
+</div>
+<style>
+.err-wrap {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px 20px;
+  text-align: center;
+}
+.err-code {
+  font-family: var(--fh);
+  font-size: 120px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--txt);
+  line-height: 1;
+}
+.err-msg {
+  font-size: 16px;
+  color: var(--txt2);
+  margin-bottom: 12px;
+}
+</style>
+</body>
+</html>
